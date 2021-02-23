@@ -8,14 +8,28 @@
 
 import os, sys, subprocess, platform, plistlib, difflib
 
+if len(sys.argv) != 3:
+  print('{} <sample-plist> <config.plist>'.format(sys.argv[0]))
+
 plSample = 'Sample.plist'
 plConfig = 'config.plist'
+
+if len(sys.argv) > 1:
+  plSample = sys.argv[1]
+if len(sys.argv) > 2:
+  plConfig = sys.argv[2]
+
+print('sample-plist: {}'.format(plSample))
+print('config-plist: {}'.format(plConfig))
 
 plBCompWindows = os.path.join(os.environ.get('ProgramW6432', os.environ.get('ProgramFiles', '')), 'Beyond Compare 4', 'BComp.exe')
 plBCompDarwin = os.path.join(os.sep, 'Applications', 'Beyond Compare.app', 'Contents', 'MacOS', 'bcomp')
 plBCompLinux = os.path.join(os.sep, 'usr', 'bin', 'bcomp')
 plBaseDir = os.path.dirname(os.path.abspath(__file__))
-plDiffPath = os.path.join(plBaseDir, os.path.splitext(os.path.basename(__file__))[0]) + '.diff'
+#plDiffPath = os.path.join(plBaseDir, os.path.splitext(os.path.basename(__file__))[0]) + '.diff'
+plHtmlDiffPath = os.path.join(plBaseDir, os.path.splitext(os.path.basename(__file__))[0]) + '.html'
+
+os.chdir(plBaseDir)
 
 def toPlistFn(fn, sf=''):
   thisFn, thisExt = os.path.splitext(os.path.basename(fn))
@@ -25,7 +39,7 @@ def toPlistSortedFn(fn):
   return toPlistFn(fn, '_sorted')
 
 def writeSorted(fn):
-  plFullFn = os.path.join(plBaseDir, toPlistFn(fn))
+  plFullFn = fn
 
   if (os.path.exists(plFullFn)):
     if (sys.version_info[0] < 3):
@@ -35,6 +49,9 @@ def writeSorted(fn):
         pl = plistlib.load(fp)
 
     plSortedFullFn = os.path.join(plBaseDir, toPlistSortedFn(fn))
+
+    if (os.path.exists(plSortedFullFn)):
+      os.remove(plSortedFullFn)
 
     if (sys.version_info[0] < 3):
       plistlib.writePlist(pl, plSortedFullFn)
@@ -63,8 +80,20 @@ if (plSortedSampleFullFn):
     if (os.path.exists(plBComp)):
       subprocess.Popen([plBComp, plSortedConfigFullFn, plSortedSampleFullFn])
     else:
-      with open(plSortedConfigFullFn) as fp1, open(plSortedSampleFullFn) as fp2:
-        diff = difflib.ndiff(fp1.readlines(), fp2.readlines())
-      with open(plDiffPath, 'w') as fp:
-        for line in diff:
-          fp.write(line)
+      #if (os.path.exists(plDiffPath)):
+      #  os.remove(plDiffPath)
+      if (os.path.exists(plHtmlDiffPath)):
+        os.remove(plHtmlDiffPath)
+
+      with open(plSortedConfigFullFn, 'r') as fp1, open(plSortedSampleFullFn, 'r') as fp2:
+        #diff = difflib.ndiff(fp1.readlines(), fp2.readlines())
+        #with open(plDiffPath, 'w') as fp:
+        #  for line in diff:
+        #    fp.write(line)
+        diff = difflib.HtmlDiff().make_file(fp1.readlines(), fp2.readlines(), plSortedConfigFullFn, plSortedSampleFullFn)
+        with open(plHtmlDiffPath, 'w') as fp:
+          fp.write(diff)
+  else:
+    print('[!] Failed to create sorted config-plist')
+else:
+  print('[!] Failed to create sorted sample-plist')
